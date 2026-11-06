@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "b3-market-pipeline",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+
+  // Coleta diária: 22:00 UTC = 19:00 em Brasília, depois do fechamento da B3 (dias úteis)
+  "triggers": { "crons": ["0 22 * * 1-5"] },
+
+  // Sem "database_id": no primeiro deploy o Wrangler cria o banco D1
+  // automaticamente e vincula ao Worker.
+  "d1_databases": [
+    { "binding": "DB", "database_name": "b3-market" }
+  ]
+}

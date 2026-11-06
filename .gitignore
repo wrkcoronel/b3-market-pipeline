@@ -1,0 +1,5 @@
+node_modules/
+.wrangler/
+.dev.vars
+.ipynb_checkpoints/
+__pycache__/
