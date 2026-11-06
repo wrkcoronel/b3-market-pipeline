@@ -1,6 +1,9 @@
 // B3 Market Pipeline — Worker
 // - scheduled: coleta as cotações diárias no Yahoo Finance e grava no D1
 // - fetch: expõe os dados em JSON para consumo (Power BI, front, etc.)
+// As rotas do filtro de empresas ficam em ./filtro.js
+
+import { rotasFiltro, ROTAS_FILTRO } from "./filtro.js";
 
 const TICKERS = {
   Ibovespa: "^BVSP",
@@ -170,9 +173,12 @@ export default {
         registros: n,
         ultima_data: ultima,
         ...(carga_inicial && { carga_inicial }),
-        endpoints: ["/cotacoes?ticker=PETR4&inicio=2025-01-01", "/ultimas"],
+        endpoints: ["/cotacoes?ticker=PETR4&inicio=2025-01-01", "/ultimas", ...ROTAS_FILTRO],
       });
     }
+
+    const resposta = await rotasFiltro(url, env);
+    if (resposta) return resposta;
 
     return json({ erro: "não encontrado" }, 404);
   },

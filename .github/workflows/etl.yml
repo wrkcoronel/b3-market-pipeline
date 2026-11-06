@@ -1,0 +1,63 @@
+name: ETL do filtro de empresas
+
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"  # diário: 19:30 em Brasília, depois do fechamento
+    - cron: "0 12 * * 0"     # semanal (domingo): cadastro e balanços
+  workflow_dispatch:
+    inputs:
+      modo:
+        description: "O que rodar"
+        type: choice
+        options: [diario, semanal, carga-inicial]
+        default: diario
+      etapas:
+        description: "Só estas etapas, separadas por vírgula (opcional). Ex.: fundamentos,indicadores"
+        required: false
+  push:
+    paths: ["etl/**", "tests/**", "requirements.txt", ".github/workflows/etl.yml"]
+  pull_request:
+    paths: ["etl/**", "tests/**", "requirements.txt"]
+
+concurrency:
+  group: etl
+  cancel-in-progress: false
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q tests
+
+  etl:
+    # Só roda no agendamento ou quando disparado à mão (não a cada push)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: testes
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+
+      - name: Rodar ETL
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          MODO: ${{ inputs.modo || (github.event.schedule == '0 12 * * 0' && 'semanal') || 'diario' }}
+          ETAPAS: ${{ inputs.etapas }}
+        run: |
+          if [ -n "$ETAPAS" ]; then
+            python -m etl "$MODO" --etapas "$ETAPAS"
+          else
+            python -m etl "$MODO"
+          fi
