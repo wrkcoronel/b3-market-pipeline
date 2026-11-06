@@ -138,13 +138,23 @@ export default {
     }
 
     if (url.pathname === "/") {
-      const { n, ultima } = await env.DB.prepare(
-        "SELECT COUNT(*) AS n, MAX(data) AS ultima FROM cotacoes"
-      ).first();
+      const contar = () =>
+        env.DB.prepare("SELECT COUNT(*) AS n, MAX(data) AS ultima FROM cotacoes").first();
+      let { n, ultima } = await contar();
+
+      // Banco vazio: faz a carga inicial na hora, sem esperar o cron.
+      // Só acontece enquanto não houver nenhum registro, e o upsert não duplica.
+      let carga_inicial;
+      if (n === 0) {
+        carga_inicial = await coletar(env);
+        ({ n, ultima } = await contar());
+      }
+
       return json({
         projeto: "b3-market-pipeline",
         registros: n,
         ultima_data: ultima,
+        ...(carga_inicial && { carga_inicial }),
         endpoints: ["/cotacoes?ticker=PETR4&inicio=2025-01-01", "/ultimas"],
       });
     }
