@@ -91,6 +91,18 @@ async function coletar(env) {
   return { periodo, resumo };
 }
 
+function autorizado(request, url, env) {
+  if (!env.API_KEY) return false;
+  const enviada =
+    url.searchParams.get("key") ??
+    request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") ??
+    "";
+  const a = new TextEncoder().encode(enviada);
+  const b = new TextEncoder().encode(env.API_KEY);
+  // Comparação em tempo constante para não vazar a chave por timing
+  return a.byteLength === b.byteLength && crypto.subtle.timingSafeEqual(a, b);
+}
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -105,12 +117,15 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // Toda rota exige a chave (secret API_KEY), via ?key=... ou header Authorization: Bearer ...
+    // Sem o secret configurado, a API fica fechada.
+    if (!autorizado(request, url, env)) return json({ erro: "não autorizado" }, 401);
+
     await garantirTabela(env.DB);
 
-    // POST /coletar — dispara a coleta na hora (exige o secret COLETA_TOKEN)
+    // POST /coletar — dispara a coleta na hora
     if (url.pathname === "/coletar" && request.method === "POST") {
-      const token = request.headers.get("Authorization")?.replace("Bearer ", "");
-      if (!env.COLETA_TOKEN || token !== env.COLETA_TOKEN) return json({ erro: "não autorizado" }, 401);
       return json(await coletar(env));
     }
 

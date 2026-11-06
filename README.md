@@ -51,7 +51,9 @@ Na primeira execução com o banco vazio, o Worker faz a carga histórica de 5 a
 | `GET /` | Status: total de registros e última data |
 | `GET /ultimas` | Último fechamento de cada ativo |
 | `GET /cotacoes?ticker=PETR4&inicio=2025-01-01` | Série histórica (filtros opcionais) |
-| `POST /coletar` | Dispara a coleta na hora (header `Authorization: Bearer <COLETA_TOKEN>`) |
+| `POST /coletar` | Dispara a coleta na hora |
+
+Todas as rotas exigem a chave do secret `API_KEY`, enviada como `?key=<chave>` ou no header `Authorization: Bearer <chave>`. Sem o secret configurado, a API responde 401 para tudo.
 
 ## Como rodar
 
